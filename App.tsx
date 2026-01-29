@@ -11,6 +11,7 @@ import {
 } from './types';
 import { analyzeSource, refinePrompt, generateImages } from './services/geminiService';
 import { Button } from './components/Button';
+import { Badge } from './components/Badge';
 import { Input, TextArea, Select, MultiSelect, Collapsible } from './components/Input';
 import { Language, UiKey, translate, getOptionLabel } from './i18n';
 
@@ -235,6 +236,136 @@ const App = () => {
         .map((item) => ({ id: item.id, data: item.data, mimeType: item.mimeType })),
     [referenceCandidates, selectedReferenceIds]
   );
+
+  const selectedBadges = useMemo(() => {
+    const items: { id: string; label: string; onRemove: () => void; className: string }[] = [];
+    const push = (
+      values: string[],
+      onChange: React.Dispatch<React.SetStateAction<string[]>>,
+      prefix: string,
+      className: string
+    ) => {
+      values.forEach((value) => {
+        items.push({
+          id: `${prefix}-${value}`,
+          label: optionLabel(value),
+          onRemove: () => onChange((prev) => prev.filter((item) => item !== value)),
+          className,
+        });
+      });
+    };
+
+    const tones = {
+      composition: 'border-sky-200 bg-sky-50 text-sky-700',
+      camera: 'border-amber-200 bg-amber-50 text-amber-700',
+      environment: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      human: 'border-rose-200 bg-rose-50 text-rose-700',
+      makeup: 'border-teal-200 bg-teal-50 text-teal-700',
+      format: 'border-slate-300 bg-slate-100 text-slate-700',
+    };
+
+    // Match prompt modifier order for clearer mental model
+    push(selectedViews, setSelectedViews, 'view', tones.composition);
+    push(selectedStyles, setSelectedStyles, 'style', tones.composition);
+    push(selectedColorPalettes, setSelectedColorPalettes, 'palette', tones.composition);
+    push(selectedTextures, setSelectedTextures, 'texture', tones.composition);
+    push(selectedEras, setSelectedEras, 'era', tones.composition);
+
+    push(selectedCameraTypes, setSelectedCameraTypes, 'camera', tones.camera);
+    push(selectedLensTypes, setSelectedLensTypes, 'lens', tones.camera);
+    push(selectedFocalLengths, setSelectedFocalLengths, 'focal', tones.camera);
+    push(selectedApertures, setSelectedApertures, 'aperture', tones.camera);
+    push(selectedShutterSpeeds, setSelectedShutterSpeeds, 'shutter', tones.camera);
+    push(selectedISOs, setSelectedISOs, 'iso', tones.camera);
+    push(selectedFilmTypes, setSelectedFilmTypes, 'film', tones.camera);
+    push(selectedFilmGrains, setSelectedFilmGrains, 'grain', tones.camera);
+    push(selectedWhiteBalances, setSelectedWhiteBalances, 'white', tones.camera);
+    push(selectedFocusStyles, setSelectedFocusStyles, 'focus', tones.camera);
+
+    push(selectedTimes, setSelectedTimes, 'time', tones.environment);
+    push(selectedWeather, setSelectedWeather, 'weather', tones.environment);
+    push(selectedSeasons, setSelectedSeasons, 'season', tones.environment);
+    push(selectedLocations, setSelectedLocations, 'location', tones.environment);
+    push(selectedMoods, setSelectedMoods, 'mood', tones.environment);
+    push(selectedLightings, setSelectedLightings, 'lighting', tones.environment);
+
+    push(selectedGenders, setSelectedGenders, 'gender', tones.human);
+    push(selectedAgeGroups, setSelectedAgeGroups, 'age', tones.human);
+    push(selectedBodyTypes, setSelectedBodyTypes, 'body', tones.human);
+    push(selectedPostures, setSelectedPostures, 'posture', tones.human);
+    push(selectedExpressions, setSelectedExpressions, 'expression', tones.human);
+    push(selectedHairStyles, setSelectedHairStyles, 'hair-style', tones.human);
+    push(selectedHairColors, setSelectedHairColors, 'hair-color', tones.human);
+    push(selectedSkinTones, setSelectedSkinTones, 'skin', tones.human);
+    push(selectedEyeColors, setSelectedEyeColors, 'eye', tones.human);
+    push(selectedClothingStyles, setSelectedClothingStyles, 'clothing', tones.human);
+
+    push(selectedMakeupBase, setSelectedMakeupBase, 'makeup-base', tones.makeup);
+    push(selectedEyeshadow, setSelectedEyeshadow, 'makeup-shadow', tones.makeup);
+    push(selectedEyeliner, setSelectedEyeliner, 'makeup-liner', tones.makeup);
+    push(selectedMascara, setSelectedMascara, 'makeup-mascara', tones.makeup);
+    push(selectedEyebrows, setSelectedEyebrows, 'makeup-brow', tones.makeup);
+    push(selectedBlush, setSelectedBlush, 'makeup-blush', tones.makeup);
+    push(selectedContour, setSelectedContour, 'makeup-contour', tones.makeup);
+    push(selectedHighlight, setSelectedHighlight, 'makeup-highlight', tones.makeup);
+    push(selectedLips, setSelectedLips, 'makeup-lips', tones.makeup);
+    push(selectedNails, setSelectedNails, 'makeup-nails', tones.makeup);
+
+    if (promptFormat !== PromptFormat.NATURAL) {
+      items.push({
+        id: `format-${promptFormat}`,
+        label: optionLabel(promptFormat),
+        onRemove: () => setPromptFormat(PromptFormat.NATURAL),
+        className: tones.format,
+      });
+    }
+
+    return items;
+  }, [
+    selectedViews,
+    selectedStyles,
+    selectedColorPalettes,
+    selectedTextures,
+    selectedEras,
+    selectedCameraTypes,
+    selectedLensTypes,
+    selectedFocalLengths,
+    selectedApertures,
+    selectedShutterSpeeds,
+    selectedISOs,
+    selectedFilmTypes,
+    selectedFilmGrains,
+    selectedWhiteBalances,
+    selectedFocusStyles,
+    selectedTimes,
+    selectedWeather,
+    selectedSeasons,
+    selectedLocations,
+    selectedMoods,
+    selectedLightings,
+    selectedGenders,
+    selectedAgeGroups,
+    selectedBodyTypes,
+    selectedPostures,
+    selectedExpressions,
+    selectedHairStyles,
+    selectedHairColors,
+    selectedSkinTones,
+    selectedEyeColors,
+    selectedClothingStyles,
+    selectedMakeupBase,
+    selectedEyeshadow,
+    selectedEyeliner,
+    selectedMascara,
+    selectedEyebrows,
+    selectedBlush,
+    selectedContour,
+    selectedHighlight,
+    selectedLips,
+    selectedNails,
+    promptFormat,
+    language,
+  ]);
 
   useEffect(() => {
     if (selectedReferenceIds.length === 0) return;
@@ -566,12 +697,20 @@ const App = () => {
                 </div>
 
                 {images.map((img) => (
-                  <div key={img.id} className="aspect-square bg-gray-100 relative overflow-hidden border-2 border-gray-100">
+                  <div key={img.id} className="aspect-square bg-gray-100 relative overflow-hidden border-2 border-gray-100 group">
                     <img 
                       src={`data:${img.mimeType};base64,${img.data}`} 
                       alt="Uploaded" 
                       className="w-full h-full object-cover transition-all duration-500" 
                     />
+                    <button
+                      type="button"
+                      onClick={() => setImages((prev) => prev.filter((item) => item.id !== img.id))}
+                      className="absolute top-1 right-1 h-6 w-6 rounded-full bg-white/90 text-gray-500 hover:text-red-500 border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity text-sm leading-none flex items-center justify-center"
+                      aria-label="Remove uploaded image"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1024,7 +1163,27 @@ const App = () => {
                   </Collapsible>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-4 space-y-3">
+                  {selectedBadges.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedBadges.map((badge) => (
+                        <Badge
+                          key={badge.id}
+                          className={`gap-2 pr-1 ${badge.className}`}
+                        >
+                          <span className="truncate max-w-[220px]">{badge.label}</span>
+                          <button
+                            type="button"
+                            onClick={badge.onRemove}
+                            className="h-4 w-4 rounded-full border border-gray-300 text-[10px] leading-none text-gray-500 hover:text-red-500 hover:border-red-200 flex items-center justify-center"
+                            aria-label={`Remove ${badge.label}`}
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <Button variant="outline" onClick={handleRefine} isLoading={isRefining} className="w-full">
                     {t('refinePrompt')}
                   </Button>
