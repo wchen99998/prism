@@ -58,9 +58,10 @@ interface MultiSelectProps {
   value: string[];
   onChange: (selected: string[]) => void;
   placeholder?: string;
+  formatSelected?: (count: number) => string;
 }
 
-export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value, onChange, placeholder = "Select..." }) => {
+export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value, onChange, placeholder = "Select...", formatSelected }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -91,7 +92,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
           className={`border-2 border-gray-200 bg-white p-3 text-sm cursor-pointer flex justify-between items-center ${isOpen ? 'border-accent' : ''} transition-colors min-h-[46px]`}
         >
           <span className={`block truncate ${value.length === 0 ? 'text-gray-400' : 'text-gray-900'}`}>
-            {value.length === 0 ? placeholder : `${value.length} selected`}
+            {value.length === 0 ? placeholder : (formatSelected ? formatSelected(value.length) : `${value.length} selected`)}
           </span>
           <svg className={`fill-current h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
         </div>

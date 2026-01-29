@@ -12,6 +12,7 @@ import {
 import { analyzeSource, refinePrompt, generateImages } from './services/geminiService';
 import { Button } from './components/Button';
 import { Input, TextArea, Select, MultiSelect, Collapsible } from './components/Input';
+import { Language, UiKey, translate, getOptionLabel } from './i18n';
 
 // API Key storage key
 const API_KEYS_STORAGE_KEY = 'gp_api_keys';
@@ -76,6 +77,7 @@ const App = () => {
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
   const [showAddNewKey, setShowAddNewKey] = useState(false);
+  const [language, setLanguage] = usePersistentState<Language>('gp_language', 'en');
 
   // Persist API keys to localStorage
   useEffect(() => {
@@ -101,6 +103,15 @@ const App = () => {
       return apiKeys[activeKeyIndex].key;
     }
     return null;
+  };
+
+  const t = (key: UiKey, vars?: Record<string, string | number>) => translate(language, key, vars);
+  const optionLabel = (value: string) => getOptionLabel(language, value);
+  const enumOptions = <T extends Record<string, string>>(enumObj: T) =>
+    Object.values(enumObj).map((value) => ({ label: optionLabel(value), value }));
+  const selectPlaceholder = (item: string) => t('selectPlaceholder', { item });
+  const multiSelectProps = {
+    formatSelected: (count: number) => t('selectedCount', { count }),
   };
 
   // State - Persisted
@@ -280,7 +291,7 @@ const App = () => {
       setOpenSections(['camera']); 
     } catch (error) {
       console.error(error);
-      alert('Failed to analyze source material.');
+      alert(t('alertAnalyzeFail'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -353,7 +364,7 @@ const App = () => {
       setCurrentPrompt(newPrompt);
     } catch (error) {
       console.error(error);
-      alert('Failed to refine prompt.');
+      alert(t('alertRefineFail'));
     } finally {
       setIsRefining(false);
     }
@@ -392,7 +403,7 @@ const App = () => {
       setGeneratedImages(prev => [...newGeneratedImages, ...prev]);
     } catch (error) {
       console.error(error);
-      alert('Failed to generate images. Ensure your prompt is valid and try again.');
+      alert(t('alertGenerateFail'));
     } finally {
       setIsGenerating(false);
     }
@@ -403,7 +414,7 @@ const App = () => {
   };
 
   const clearAll = () => {
-      if(window.confirm("Are you sure you want to clear all data and start over?")) {
+      if(window.confirm(t('confirmClearAll'))) {
         setImages([]);
         setSourceText('');
         setAnalysis(null);
@@ -442,10 +453,28 @@ const App = () => {
           </div>
           <div className="flex items-center gap-4">
              <button onClick={handleApiKeySelect} className={`text-xs font-mono uppercase transition-colors flex items-center gap-1 ${getActiveApiKey() ? 'text-green-500 hover:text-green-600' : 'text-red-500 hover:text-red-600'}`}>
-               {getActiveApiKey() ? '● API Key Set' : '○ API Key Missing'}
+               {getActiveApiKey() ? t('apiKeySet') : t('apiKeyMissing')}
              </button>
              <div className="h-4 w-px bg-gray-200"></div>
-             <button onClick={clearAll} className="text-xs font-mono text-gray-400 hover:text-red-500 uppercase transition-colors">Reset All</button>
+             <div className="flex items-center gap-1 text-xs font-mono uppercase">
+               <button
+                 onClick={() => setLanguage('en')}
+                 className={`transition-colors ${language === 'en' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                 aria-label="Switch to English"
+               >
+                 EN
+               </button>
+               <span className="text-gray-300">/</span>
+               <button
+                 onClick={() => setLanguage('zh-CN')}
+                 className={`transition-colors ${language === 'zh-CN' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                 aria-label="切换到中文"
+               >
+                 中文
+               </button>
+             </div>
+             <div className="h-4 w-px bg-gray-200"></div>
+             <button onClick={clearAll} className="text-xs font-mono text-gray-400 hover:text-red-500 uppercase transition-colors">{t('resetAll')}</button>
              <span className="text-xs font-mono text-gray-400">V1.1.0</span>
           </div>
         </header>
@@ -455,17 +484,17 @@ const App = () => {
           {/* SECTION 1: SOURCE MATERIAL */}
           <section className="space-y-6">
             <div className="flex justify-between items-baseline">
-              <h2 className="text-lg font-bold uppercase">Source Material</h2>
+              <h2 className="text-lg font-bold uppercase">{t('sourceMaterial')}</h2>
               {images.length > 0 && (
                 <button onClick={clearImages} className="text-xs text-red-500 hover:text-red-600 font-bold uppercase underline decoration-2">
-                  Clear Images
+                  {t('clearImages')}
                 </button>
               )}
             </div>
             
             <div className="space-y-4">
               <TextArea 
-                placeholder="Describe your idea, concept, or paste a prompt here..."
+                placeholder={t('sourcePlaceholder')}
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
                 className="min-h-[100px]"
@@ -505,7 +534,7 @@ const App = () => {
               isLoading={isAnalyzing}
               className="w-full"
             >
-              ANALYZE SOURCE
+              {t('analyzeSource')}
             </Button>
           </section>
 
@@ -513,28 +542,28 @@ const App = () => {
           {analysis && (
             <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="border-t-2 border-gray-100 pt-8">
-                 <h2 className="text-lg font-bold uppercase mb-4">Deconstruction</h2>
+                 <h2 className="text-lg font-bold uppercase mb-4">{t('deconstruction')}</h2>
                  <div className="bg-gray-50 p-4 border-l-4 border-accent text-sm leading-relaxed text-gray-600">
-                    <p className="font-bold text-black mb-1">Observation:</p>
+                    <p className="font-bold text-black mb-1">{t('observation')}</p>
                     {analysis.description}
                  </div>
                  <div className="grid grid-cols-2 gap-4 mt-4 text-xs">
                     <div className="border-2 border-gray-100 p-2">
-                      <span className="block font-bold text-gray-400 uppercase">Subject</span>
+                      <span className="block font-bold text-gray-400 uppercase">{t('subject')}</span>
                       {analysis.subject}
                     </div>
                     <div className="border-2 border-gray-100 p-2">
-                      <span className="block font-bold text-gray-400 uppercase">Composition</span>
+                      <span className="block font-bold text-gray-400 uppercase">{t('composition')}</span>
                       {analysis.composition}
                     </div>
                  </div>
               </div>
 
               <div className="border-t-2 border-gray-100 pt-8 space-y-4">
-                <h2 className="text-lg font-bold uppercase mb-4">Refinement</h2>
+                <h2 className="text-lg font-bold uppercase mb-4">{t('refinement')}</h2>
                 
                 <TextArea 
-                  label="Current Prompt" 
+                  label={t('currentPrompt')} 
                   value={currentPrompt} 
                   onChange={(e) => setCurrentPrompt(e.target.value)} 
                   className="mb-4 min-h-[300px] text-base leading-relaxed"
@@ -542,363 +571,404 @@ const App = () => {
 
                 <div className="flex flex-col">
                   <Collapsible 
-                    title="Camera & Lens" 
+                    title={t('cameraLens')} 
                     isOpen={openSections.includes('camera')} 
                     onToggle={() => toggleSection('camera')}
                     count={selectedCameraTypes.length + selectedLensTypes.length + selectedFocalLengths.length + selectedApertures.length + selectedShutterSpeeds.length + selectedISOs.length + selectedFilmTypes.length + selectedFilmGrains.length + selectedWhiteBalances.length + selectedFocusStyles.length}
                   >
                     <div className="space-y-4">
                       <MultiSelect 
-                        label="Camera Type"
-                        options={Object.values(CameraType).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('cameraType')}
+                        options={enumOptions(CameraType)}
                         value={selectedCameraTypes}
                         onChange={setSelectedCameraTypes}
-                        placeholder="Select camera type..."
+                        placeholder={selectPlaceholder(t('cameraType'))}
                       />
                       <MultiSelect 
-                        label="Lens Type"
-                        options={Object.values(LensType).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('lensType')}
+                        options={enumOptions(LensType)}
                         value={selectedLensTypes}
                         onChange={setSelectedLensTypes}
-                        placeholder="Select lens type..."
+                        placeholder={selectPlaceholder(t('lensType'))}
                       />
                       <MultiSelect 
-                        label="Focal Length"
-                        options={Object.values(FocalLength).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('focalLength')}
+                        options={enumOptions(FocalLength)}
                         value={selectedFocalLengths}
                         onChange={setSelectedFocalLengths}
-                        placeholder="Select focal lengths..."
+                        placeholder={selectPlaceholder(t('focalLength'))}
                       />
                       <MultiSelect 
-                        label="Aperture (f-stop)"
-                        options={Object.values(Aperture).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('aperture')}
+                        options={enumOptions(Aperture)}
                         value={selectedApertures}
                         onChange={setSelectedApertures}
-                        placeholder="Select aperture..."
+                        placeholder={selectPlaceholder(t('aperture'))}
                       />
                       <MultiSelect 
-                        label="Shutter Speed"
-                        options={Object.values(ShutterSpeed).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('shutterSpeed')}
+                        options={enumOptions(ShutterSpeed)}
                         value={selectedShutterSpeeds}
                         onChange={setSelectedShutterSpeeds}
-                        placeholder="Select shutter speed..."
+                        placeholder={selectPlaceholder(t('shutterSpeed'))}
                       />
                       <MultiSelect 
-                        label="ISO"
-                        options={Object.values(ISO).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('iso')}
+                        options={enumOptions(ISO)}
                         value={selectedISOs}
                         onChange={setSelectedISOs}
-                        placeholder="Select ISO..."
+                        placeholder={selectPlaceholder(t('iso'))}
                       />
                       <MultiSelect 
-                        label="Film Stock"
-                        options={Object.values(FilmType).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('filmStock')}
+                        options={enumOptions(FilmType)}
                         value={selectedFilmTypes}
                         onChange={setSelectedFilmTypes}
-                        placeholder="Select film stock..."
+                        placeholder={selectPlaceholder(t('filmStock'))}
                       />
                       <MultiSelect 
-                        label="Film Grain"
-                        options={Object.values(FilmGrain).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('filmGrain')}
+                        options={enumOptions(FilmGrain)}
                         value={selectedFilmGrains}
                         onChange={setSelectedFilmGrains}
-                        placeholder="Select film grain..."
+                        placeholder={selectPlaceholder(t('filmGrain'))}
                       />
                       <MultiSelect 
-                        label="White Balance"
-                        options={Object.values(WhiteBalance).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('whiteBalance')}
+                        options={enumOptions(WhiteBalance)}
                         value={selectedWhiteBalances}
                         onChange={setSelectedWhiteBalances}
-                        placeholder="Select white balance..."
+                        placeholder={selectPlaceholder(t('whiteBalance'))}
                       />
                       <MultiSelect 
-                        label="Focus & Depth of Field"
-                        options={Object.values(FocusStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('focusDepth')}
+                        options={enumOptions(FocusStyle)}
                         value={selectedFocusStyles}
                         onChange={setSelectedFocusStyles}
-                        placeholder="Select focus style..."
+                        placeholder={selectPlaceholder(t('focusDepth'))}
                       />
                     </div>
                   </Collapsible>
 
                   <Collapsible 
-                    title="Environment & Lighting" 
+                    title={t('environmentLighting')} 
                     isOpen={openSections.includes('environment')} 
                     onToggle={() => toggleSection('environment')}
                     count={selectedTimes.length + selectedWeather.length + selectedSeasons.length + selectedLocations.length + selectedMoods.length + selectedLightings.length}
                   >
                     <div className="space-y-4">
                       <MultiSelect 
-                        label="Time of Day"
-                        options={Object.values(TimeOfDay).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('timeOfDay')}
+                        options={enumOptions(TimeOfDay)}
                         value={selectedTimes}
                         onChange={setSelectedTimes}
-                        placeholder="Select time..."
+                        placeholder={selectPlaceholder(t('timeOfDay'))}
                       />
                       <MultiSelect 
-                        label="Season"
-                        options={Object.values(Season).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('season')}
+                        options={enumOptions(Season)}
                         value={selectedSeasons}
                         onChange={setSelectedSeasons}
-                        placeholder="Select season..."
+                        placeholder={selectPlaceholder(t('season'))}
                       />
                       <MultiSelect 
-                        label="Weather"
-                        options={Object.values(Weather).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('weather')}
+                        options={enumOptions(Weather)}
                         value={selectedWeather}
                         onChange={setSelectedWeather}
-                        placeholder="Select weather..."
+                        placeholder={selectPlaceholder(t('weather'))}
                       />
                       <MultiSelect 
-                        label="Location/Setting"
-                        options={Object.values(LocationType).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('location')}
+                        options={enumOptions(LocationType)}
                         value={selectedLocations}
                         onChange={setSelectedLocations}
-                        placeholder="Select location..."
+                        placeholder={selectPlaceholder(t('location'))}
                       />
                       <MultiSelect 
-                        label="Mood/Atmosphere"
-                        options={Object.values(Mood).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('mood')}
+                        options={enumOptions(Mood)}
                         value={selectedMoods}
                         onChange={setSelectedMoods}
-                        placeholder="Select mood..."
+                        placeholder={selectPlaceholder(t('mood'))}
                       />
                       <MultiSelect 
-                        label="Lighting Style"
-                        options={Object.values(Lighting).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('lightingStyle')}
+                        options={enumOptions(Lighting)}
                         value={selectedLightings}
                         onChange={setSelectedLightings}
-                        placeholder="Select lighting..."
+                        placeholder={selectPlaceholder(t('lightingStyle'))}
                       />
                     </div>
                   </Collapsible>
 
                   <Collapsible 
-                    title="Composition & Style" 
+                    title={t('compositionStyle')} 
                     isOpen={openSections.includes('composition')} 
                     onToggle={() => toggleSection('composition')}
                     count={selectedViews.length + selectedStyles.length + selectedColorPalettes.length + selectedTextures.length + selectedEras.length}
                   >
                      <div className="space-y-4">
                       <MultiSelect 
-                        label="Perspective/Framing"
-                        options={Object.values(ViewPoint).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('perspective')}
+                        options={enumOptions(ViewPoint)}
                         value={selectedViews}
                         onChange={setSelectedViews}
-                        placeholder="Select perspective..."
+                        placeholder={selectPlaceholder(t('perspective'))}
                       />
                       <MultiSelect 
-                        label="Art Style"
-                        options={Object.values(ArtStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('artStyle')}
+                        options={enumOptions(ArtStyle)}
                         value={selectedStyles}
                         onChange={setSelectedStyles}
-                        placeholder="Select art style..."
+                        placeholder={selectPlaceholder(t('artStyle'))}
                       />
                       <MultiSelect 
-                        label="Color Palette"
-                        options={Object.values(ColorPalette).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('colorPalette')}
+                        options={enumOptions(ColorPalette)}
                         value={selectedColorPalettes}
                         onChange={setSelectedColorPalettes}
-                        placeholder="Select color palette..."
+                        placeholder={selectPlaceholder(t('colorPalette'))}
                       />
                       <MultiSelect 
-                        label="Texture/Surface"
-                        options={Object.values(Texture).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('texture')}
+                        options={enumOptions(Texture)}
                         value={selectedTextures}
                         onChange={setSelectedTextures}
-                        placeholder="Select texture..."
+                        placeholder={selectPlaceholder(t('texture'))}
                       />
                       <MultiSelect 
-                        label="Era/Time Period"
-                        options={Object.values(Era).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('era')}
+                        options={enumOptions(Era)}
                         value={selectedEras}
                         onChange={setSelectedEras}
-                        placeholder="Select time period..."
+                        placeholder={selectPlaceholder(t('era'))}
                       />
                     </div>
                   </Collapsible>
 
                   <Collapsible 
-                    title="Human Subject" 
+                    title={t('humanSubject')} 
                     isOpen={openSections.includes('human')} 
                     onToggle={() => toggleSection('human')}
                     count={selectedGenders.length + selectedAgeGroups.length + selectedBodyTypes.length + selectedPostures.length + selectedExpressions.length + selectedHairStyles.length + selectedHairColors.length + selectedSkinTones.length + selectedEyeColors.length + selectedClothingStyles.length}
                   >
                     <div className="space-y-4">
                       <MultiSelect 
-                        label="Gender Presentation"
-                        options={Object.values(Gender).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('genderPresentation')}
+                        options={enumOptions(Gender)}
                         value={selectedGenders}
                         onChange={setSelectedGenders}
-                        placeholder="Select gender..."
+                        placeholder={selectPlaceholder(t('genderPresentation'))}
                       />
                       <MultiSelect 
-                        label="Age Group"
-                        options={Object.values(AgeGroup).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('ageGroup')}
+                        options={enumOptions(AgeGroup)}
                         value={selectedAgeGroups}
                         onChange={setSelectedAgeGroups}
-                        placeholder="Select age group..."
+                        placeholder={selectPlaceholder(t('ageGroup'))}
                       />
                       <MultiSelect 
-                        label="Body Type"
-                        options={Object.values(BodyType).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('bodyType')}
+                        options={enumOptions(BodyType)}
                         value={selectedBodyTypes}
                         onChange={setSelectedBodyTypes}
-                        placeholder="Select body type..."
+                        placeholder={selectPlaceholder(t('bodyType'))}
                       />
                       <MultiSelect 
-                        label="Posture/Pose"
-                        options={Object.values(Posture).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('posturePose')}
+                        options={enumOptions(Posture)}
                         value={selectedPostures}
                         onChange={setSelectedPostures}
-                        placeholder="Select posture..."
+                        placeholder={selectPlaceholder(t('posturePose'))}
                       />
                       <MultiSelect 
-                        label="Facial Expression"
-                        options={Object.values(Expression).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('facialExpression')}
+                        options={enumOptions(Expression)}
                         value={selectedExpressions}
                         onChange={setSelectedExpressions}
-                        placeholder="Select expression..."
+                        placeholder={selectPlaceholder(t('facialExpression'))}
                       />
                       <MultiSelect 
-                        label="Hair Style"
-                        options={Object.values(HairStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('hairStyle')}
+                        options={enumOptions(HairStyle)}
                         value={selectedHairStyles}
                         onChange={setSelectedHairStyles}
-                        placeholder="Select hair style..."
+                        placeholder={selectPlaceholder(t('hairStyle'))}
                       />
                       <MultiSelect 
-                        label="Hair Color"
-                        options={Object.values(HairColor).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('hairColor')}
+                        options={enumOptions(HairColor)}
                         value={selectedHairColors}
                         onChange={setSelectedHairColors}
-                        placeholder="Select hair color..."
+                        placeholder={selectPlaceholder(t('hairColor'))}
                       />
                       <MultiSelect 
-                        label="Skin Tone"
-                        options={Object.values(SkinTone).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('skinTone')}
+                        options={enumOptions(SkinTone)}
                         value={selectedSkinTones}
                         onChange={setSelectedSkinTones}
-                        placeholder="Select skin tone..."
+                        placeholder={selectPlaceholder(t('skinTone'))}
                       />
                       <MultiSelect 
-                        label="Eye Color"
-                        options={Object.values(EyeColor).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('eyeColor')}
+                        options={enumOptions(EyeColor)}
                         value={selectedEyeColors}
                         onChange={setSelectedEyeColors}
-                        placeholder="Select eye color..."
+                        placeholder={selectPlaceholder(t('eyeColor'))}
                       />
                       <MultiSelect 
-                        label="Clothing Style"
-                        options={Object.values(ClothingStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('clothingStyle')}
+                        options={enumOptions(ClothingStyle)}
                         value={selectedClothingStyles}
                         onChange={setSelectedClothingStyles}
-                        placeholder="Select clothing style..."
+                        placeholder={selectPlaceholder(t('clothingStyle'))}
                       />
                     </div>
                   </Collapsible>
 
                   <Collapsible 
-                    title="Makeup & Beauty" 
+                    title={t('makeupBeauty')} 
                     isOpen={openSections.includes('makeup')} 
                     onToggle={() => toggleSection('makeup')}
                     count={selectedMakeupBase.length + selectedEyeshadow.length + selectedEyeliner.length + selectedMascara.length + selectedEyebrows.length + selectedBlush.length + selectedContour.length + selectedHighlight.length + selectedLips.length + selectedNails.length}
                   >
                     <div className="space-y-4">
                       <MultiSelect 
-                        label="Base/Foundation"
-                        options={Object.values(MakeupBase).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('baseFoundation')}
+                        options={enumOptions(MakeupBase)}
                         value={selectedMakeupBase}
                         onChange={setSelectedMakeupBase}
-                        placeholder="Select base makeup..."
+                        placeholder={selectPlaceholder(t('baseFoundation'))}
                       />
                       <MultiSelect 
-                        label="Eyeshadow"
-                        options={Object.values(EyeshadowStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('eyeshadow')}
+                        options={enumOptions(EyeshadowStyle)}
                         value={selectedEyeshadow}
                         onChange={setSelectedEyeshadow}
-                        placeholder="Select eyeshadow style..."
+                        placeholder={selectPlaceholder(t('eyeshadow'))}
                       />
                       <MultiSelect 
-                        label="Eyeliner"
-                        options={Object.values(EyelinerStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('eyeliner')}
+                        options={enumOptions(EyelinerStyle)}
                         value={selectedEyeliner}
                         onChange={setSelectedEyeliner}
-                        placeholder="Select eyeliner style..."
+                        placeholder={selectPlaceholder(t('eyeliner'))}
                       />
                       <MultiSelect 
-                        label="Mascara/Lashes"
-                        options={Object.values(MascaraStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('mascara')}
+                        options={enumOptions(MascaraStyle)}
                         value={selectedMascara}
                         onChange={setSelectedMascara}
-                        placeholder="Select mascara style..."
+                        placeholder={selectPlaceholder(t('mascara'))}
                       />
                       <MultiSelect 
-                        label="Eyebrows"
-                        options={Object.values(EyebrowStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('eyebrows')}
+                        options={enumOptions(EyebrowStyle)}
                         value={selectedEyebrows}
                         onChange={setSelectedEyebrows}
-                        placeholder="Select eyebrow style..."
+                        placeholder={selectPlaceholder(t('eyebrows'))}
                       />
                       <MultiSelect 
-                        label="Blush"
-                        options={Object.values(BlushStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('blush')}
+                        options={enumOptions(BlushStyle)}
                         value={selectedBlush}
                         onChange={setSelectedBlush}
-                        placeholder="Select blush style..."
+                        placeholder={selectPlaceholder(t('blush'))}
                       />
                       <MultiSelect 
-                        label="Contour"
-                        options={Object.values(ContourStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('contour')}
+                        options={enumOptions(ContourStyle)}
                         value={selectedContour}
                         onChange={setSelectedContour}
-                        placeholder="Select contour style..."
+                        placeholder={selectPlaceholder(t('contour'))}
                       />
                       <MultiSelect 
-                        label="Highlight"
-                        options={Object.values(HighlightStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('highlight')}
+                        options={enumOptions(HighlightStyle)}
                         value={selectedHighlight}
                         onChange={setSelectedHighlight}
-                        placeholder="Select highlight style..."
+                        placeholder={selectPlaceholder(t('highlight'))}
                       />
                       <MultiSelect 
-                        label="Lips"
-                        options={Object.values(LipStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('lips')}
+                        options={enumOptions(LipStyle)}
                         value={selectedLips}
                         onChange={setSelectedLips}
-                        placeholder="Select lip style..."
+                        placeholder={selectPlaceholder(t('lips'))}
                       />
                       <MultiSelect 
-                        label="Nails"
-                        options={Object.values(NailStyle).map(v => ({ label: v, value: v }))}
+                        {...multiSelectProps}
+                        label={t('nails')}
+                        options={enumOptions(NailStyle)}
                         value={selectedNails}
                         onChange={setSelectedNails}
-                        placeholder="Select nail style..."
+                        placeholder={selectPlaceholder(t('nails'))}
                       />
                     </div>
                   </Collapsible>
                   
                   <Collapsible 
-                    title="Output Format" 
+                    title={t('outputFormat')} 
                     isOpen={openSections.includes('format')} 
                     onToggle={() => toggleSection('format')}
                     count={promptFormat !== PromptFormat.NATURAL ? 1 : 0}
                   >
                     <Select 
-                      options={Object.values(PromptFormat).map(v => ({ label: v, value: v }))}
+                      options={enumOptions(PromptFormat)}
                       value={promptFormat}
                       onChange={(e) => setPromptFormat(e.target.value as PromptFormat)}
                     />
                   </Collapsible>
 
                   <Collapsible 
-                    title="Custom Details" 
+                    title={t('customDetails')} 
                     isOpen={openSections.includes('custom')} 
                     onToggle={() => toggleSection('custom')}
                     count={customModifiers ? 1 : 0}
                   >
                     <Input 
-                      placeholder="e.g. wearing a red hat, standing on a cliff"
+                      placeholder={t('customDetailsPlaceholder')}
                       value={customModifiers}
                       onChange={(e) => setCustomModifiers(e.target.value)}
                     />
@@ -907,7 +977,7 @@ const App = () => {
 
                 <div className="pt-4">
                   <Button variant="outline" onClick={handleRefine} isLoading={isRefining} className="w-full">
-                    REFINE PROMPT
+                    {t('refinePrompt')}
                   </Button>
                 </div>
               </div>
@@ -917,14 +987,14 @@ const App = () => {
           {/* SECTION 3: GENERATION */}
           {currentPrompt && (
             <section className="space-y-4 border-t-2 border-gray-100 pt-8 pb-20">
-               <h2 className="text-lg font-bold uppercase">Synthesis</h2>
+               <h2 className="text-lg font-bold uppercase">{t('synthesis')}</h2>
                
                <div className="flex flex-col gap-4">
                  <Select 
-                    label="Model"
+                    label={t('model')}
                     options={[
-                      { label: "Nano Banana (Standard - Fast)", value: GenModel.NANO_BANANA },
-                      { label: "Nano Banana Pro (Enhanced - High Quality)", value: GenModel.NANO_BANANA_PRO }
+                      { label: t('modelStandard'), value: GenModel.NANO_BANANA },
+                      { label: t('modelPro'), value: GenModel.NANO_BANANA_PRO }
                     ]}
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value as GenModel)}
@@ -932,8 +1002,8 @@ const App = () => {
 
                  <div className="grid grid-cols-2 gap-4">
                    <Select 
-                      label="Aspect Ratio"
-                      options={Object.entries(AspectRatio).map(([k, v]) => ({ label: v, value: v }))}
+                      label={t('aspectRatio')}
+                      options={enumOptions(AspectRatio)}
                       value={aspectRatio}
                       onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
                     />
@@ -941,16 +1011,16 @@ const App = () => {
                     {/* Resolution only for Pro Model */}
                     {selectedModel === GenModel.NANO_BANANA_PRO ? (
                        <Select 
-                        label="Resolution"
-                        options={Object.values(ImageResolution).map((v) => ({ label: v, value: v }))}
+                        label={t('resolution')}
+                        options={enumOptions(ImageResolution)}
                         value={resolution}
                         onChange={(e) => setResolution(e.target.value as ImageResolution)}
                       />
                     ) : (
                       <div className="flex flex-col gap-1 w-full opacity-50 pointer-events-none">
-                         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Resolution</label>
+                         <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('resolution')}</label>
                          <div className="border-2 border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-                           Standard (1K)
+                           {t('resolutionStandard')}
                          </div>
                       </div>
                     )}
@@ -958,27 +1028,27 @@ const App = () => {
 
                  <div className="grid grid-cols-2 gap-4">
                     <Select 
-                      label="Image Count"
+                      label={t('imageCount')}
                       options={[1, 2, 3, 4].map(n => ({ label: n.toString(), value: n.toString() }))}
                       value={imageCount}
                       onChange={(e) => setImageCount(parseInt(e.target.value))}
                     />
                     
                     <div className="flex flex-col gap-1 w-full">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Source</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('source')}</label>
                       <button 
                         onClick={() => setIncludeReference(!includeReference)}
                         className={`h-[46px] border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${includeReference ? 'border-accent bg-accent/5 text-accent' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
                       >
                         <div className={`w-3 h-3 border ${includeReference ? 'bg-accent border-accent' : 'border-gray-400'}`}></div>
-                        INCLUDE SOURCES
+                        {t('includeSources')}
                       </button>
                     </div>
                  </div>
                </div>
 
                <Button variant="secondary" onClick={handleGenerate} isLoading={isGenerating} className="w-full py-4 text-lg">
-                 GENERATE {imageCount} IMAGE{imageCount > 1 ? 'S' : ''}
+                 {t('generateImages', { count: imageCount, plural: imageCount > 1 ? 'S' : '' })}
                </Button>
             </section>
           )}
@@ -994,7 +1064,7 @@ const App = () => {
                <div className="w-24 h-24 border-4 border-gray-200 border-dashed flex items-center justify-center">
                  <div className="w-4 h-4 bg-gray-200"></div>
                </div>
-               <p className="font-mono text-sm uppercase tracking-widest">Waiting for output</p>
+               <p className="font-mono text-sm uppercase tracking-widest">{t('waitingForOutput')}</p>
             </div>
           ) : (
             <div className="w-full space-y-8 pb-10">
@@ -1009,11 +1079,11 @@ const App = () => {
                         download={`gemini-gen-${img.id}.jpg`}
                         className="text-xs font-bold uppercase hover:text-accent transition-colors opacity-0 group-hover:opacity-100"
                       >
-                        Download Original
+                        {t('downloadOriginal')}
                       </a>
                    </div>
                    <div className="bg-white p-2 border-2 border-gray-200 shadow-sm">
-                      <img src={img.url} alt="Generated" className="w-full h-auto block" />
+                      <img src={img.url} alt={t('generatedAlt')} className="w-full h-auto block" />
                    </div>
                    <p className="mt-3 text-xs text-gray-500 font-mono border-l-2 border-gray-200 pl-3 line-clamp-2 hover:line-clamp-none transition-all cursor-help">
                      {img.prompt}
@@ -1028,7 +1098,7 @@ const App = () => {
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-20">
                <div className="flex flex-col items-center gap-4">
                  <div className="w-16 h-16 border-4 border-gray-200 border-t-accent animate-spin rounded-none"></div>
-                 <span className="font-bold uppercase tracking-widest text-sm animate-pulse">Rendering {imageCount} Frame{imageCount > 1 ? 's' : ''}</span>
+                 <span className="font-bold uppercase tracking-widest text-sm animate-pulse">{t('renderingFrames', { count: imageCount, plural: imageCount > 1 ? 's' : '' })}</span>
                </div>
             </div>
           )}
@@ -1041,7 +1111,7 @@ const App = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-md border-2 border-gray-200 shadow-xl animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b-2 border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold uppercase tracking-tight">Manage API Keys</h2>
+              <h2 className="text-lg font-bold uppercase tracking-tight">{t('manageApiKeys')}</h2>
               <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1053,7 +1123,7 @@ const App = () => {
               {/* Existing Keys List */}
               {apiKeys.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Select API Key</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('selectApiKey')}</h3>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {apiKeys.map((key, index) => (
                       <div 
@@ -1075,7 +1145,7 @@ const App = () => {
                         <button 
                           onClick={(e) => handleDeleteKey(index, e)}
                           className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                          title="Delete key"
+                          title={t('deleteKey')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1090,23 +1160,23 @@ const App = () => {
               {/* Add New Key Section */}
               {showAddNewKey ? (
                 <div className="space-y-4 border-t-2 border-gray-100 pt-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Add New API Key</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('addNewApiKey')}</h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">Key Name</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">{t('keyName')}</label>
                       <input
                         type="text"
-                        placeholder="e.g., Personal Key, Work Account"
+                        placeholder={t('keyNamePlaceholder')}
                         value={newKeyName}
                         onChange={(e) => setNewKeyName(e.target.value)}
                         className="w-full border-2 border-gray-200 p-2 text-sm focus:border-accent focus:outline-none transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">API Key</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">{t('apiKeyLabel')}</label>
                       <input
                         type="password"
-                        placeholder="Paste your Gemini API key here"
+                        placeholder={t('apiKeyPlaceholder')}
                         value={newKeyValue}
                         onChange={(e) => setNewKeyValue(e.target.value)}
                         className="w-full border-2 border-gray-200 p-2 text-sm focus:border-accent focus:outline-none transition-colors"
@@ -1118,14 +1188,14 @@ const App = () => {
                         disabled={!newKeyName.trim() || !newKeyValue.trim()}
                         className="flex-1 bg-accent text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Add Key
+                        {t('addKey')}
                       </button>
                       {apiKeys.length > 0 && (
                         <button
                           onClick={() => setShowAddNewKey(false)}
                           className="px-4 py-2 border-2 border-gray-200 text-sm font-bold uppercase tracking-wider hover:border-gray-300 transition-colors"
                         >
-                          Cancel
+                          {t('cancel')}
                         </button>
                       )}
                     </div>
@@ -1139,14 +1209,14 @@ const App = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add New API Key
+                  {t('addNewApiKey')}
                 </button>
               )}
 
               {/* Info */}
               <div className="bg-gray-50 p-3 border-l-4 border-gray-300 text-xs text-gray-600">
-                <p className="font-bold text-gray-700 mb-1">About API Keys</p>
-                <p>Your API keys are stored locally in your browser. Get your Gemini API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-accent underline">Google AI Studio</a>.</p>
+                <p className="font-bold text-gray-700 mb-1">{t('aboutApiKeys')}</p>
+                <p>{t('apiKeysInfo')}<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-accent underline">{t('googleAiStudio')}</a>.</p>
               </div>
             </div>
 
@@ -1155,7 +1225,7 @@ const App = () => {
                 onClick={handleCloseModal}
                 className="px-6 py-2 bg-gray-900 text-white text-sm font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors"
               >
-                Done
+                {t('done')}
               </button>
             </div>
           </div>
