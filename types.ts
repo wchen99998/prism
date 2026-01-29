@@ -1271,3 +1271,37 @@ export enum NailStyle {
   THREE_D_ART = '3D nail art',
   PIERCED = 'Pierced nails',
 }
+
+export enum StoryboardLayout {
+  SINGLE = 'Single frame (no storyboard grid)',
+  VERTICAL_STACK = 'Vertical stack storyboard (multiple scenes top-to-bottom in one image)',
+  HORIZONTAL_STRIP = 'Horizontal strip storyboard (scenes left-to-right)',
+  GRID_2X2 = 'Storyboard grid 2x2 (4 panels)',
+  GRID_3X2 = 'Storyboard grid 3x2 (6 panels)',
+}
+
+export enum StoryboardStyle {
+  AUTO = 'Auto (no specific storyboard style)',
+  ROUGH = 'Rough storyboard sketches',
+  CLEAN = 'Clean line storyboard',
+  CINEMATIC = 'Cinematic still frames',
+  ANIMATIC = 'Animatic keyframes',
+  MONOCHROME = 'Monochrome storyboard',
+  COLOR_SCRIPT = 'Color script storyboard',
+}
+
+export enum CameraMovement {
+  STATIC = 'Static/Locked-off',
+  PAN = 'Pan (left/right)',
+  TILT = 'Tilt (up/down)',
+  DOLLY_IN = 'Dolly in',
+  DOLLY_OUT = 'Dolly out',
+  TRACKING = 'Tracking/Trucking',
+  CRANE = 'Crane/Jib',
+  HANDHELD = 'Handheld',
+  STEADICAM = 'Steadicam',
+  WHIP_PAN = 'Whip pan',
+  ZOOM_IN = 'Zoom in',
+  ZOOM_OUT = 'Zoom out',
+  RACK_FOCUS = 'Rack focus',
+}

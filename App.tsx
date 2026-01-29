@@ -7,7 +7,8 @@ import {
   Season, LocationType, Mood, ColorPalette, Texture, Era,
   Gender, AgeGroup, BodyType, Posture, Expression, HairStyle, HairColor,
   SkinTone, EyeColor, ClothingStyle, MakeupBase, EyeshadowStyle, EyelinerStyle,
-  MascaraStyle, EyebrowStyle, BlushStyle, ContourStyle, HighlightStyle, LipStyle, NailStyle
+  MascaraStyle, EyebrowStyle, BlushStyle, ContourStyle, HighlightStyle, LipStyle, NailStyle,
+  StoryboardLayout, StoryboardStyle, CameraMovement
 } from './types';
 import { analyzeSource, refinePrompt, generateImages } from './services/geminiService';
 import { Button } from './components/Button';
@@ -159,6 +160,25 @@ const App = () => {
   const [selectedColorPalettes, setSelectedColorPalettes] = usePersistentState<string[]>('gp_selectedColorPalettes', []);
   const [selectedTextures, setSelectedTextures] = usePersistentState<string[]>('gp_selectedTextures', []);
   const [selectedEras, setSelectedEras] = usePersistentState<string[]>('gp_selectedEras', []);
+
+  // Director Storyboard - Persisted
+  const [storyboardLayout, setStoryboardLayout] = usePersistentState<StoryboardLayout>(
+    'gp_storyboardLayout',
+    StoryboardLayout.SINGLE
+  );
+  const [storyboardPanels, setStoryboardPanels] = usePersistentState<string>('gp_storyboardPanels', '');
+  const [storyboardStyle, setStoryboardStyle] = usePersistentState<StoryboardStyle>(
+    'gp_storyboardStyle',
+    StoryboardStyle.AUTO
+  );
+  const [selectedCameraMovements, setSelectedCameraMovements] = usePersistentState<string[]>(
+    'gp_selectedCameraMovements',
+    []
+  );
+  const [panelAspect, setPanelAspect] = usePersistentState<string>('gp_panelAspect', '');
+  const [beatSheet, setBeatSheet] = usePersistentState<string>('gp_beatSheet', '');
+  const [shotNotes, setShotNotes] = usePersistentState<string>('gp_shotNotes', '');
+  const [directorNotes, setDirectorNotes] = usePersistentState<string>('gp_directorNotes', '');
   
   // Human Subject - Persisted
   const [selectedGenders, setSelectedGenders] = usePersistentState<string[]>('gp_selectedGenders', []);
@@ -261,10 +281,29 @@ const App = () => {
       environment: 'border-emerald-200 bg-emerald-50 text-emerald-700',
       human: 'border-rose-200 bg-rose-50 text-rose-700',
       makeup: 'border-teal-200 bg-teal-50 text-teal-700',
+      director: 'border-indigo-200 bg-indigo-50 text-indigo-700',
       format: 'border-slate-300 bg-slate-100 text-slate-700',
     };
 
     // Match prompt modifier order for clearer mental model
+    if (storyboardLayout !== StoryboardLayout.SINGLE) {
+      items.push({
+        id: `storyboard-layout-${storyboardLayout}`,
+        label: optionLabel(storyboardLayout),
+        onRemove: () => setStoryboardLayout(StoryboardLayout.SINGLE),
+        className: tones.director,
+      });
+    }
+    if (storyboardStyle !== StoryboardStyle.AUTO) {
+      items.push({
+        id: `storyboard-style-${storyboardStyle}`,
+        label: optionLabel(storyboardStyle),
+        onRemove: () => setStoryboardStyle(StoryboardStyle.AUTO),
+        className: tones.director,
+      });
+    }
+    push(selectedCameraMovements, setSelectedCameraMovements, 'camera-move', tones.director);
+
     push(selectedViews, setSelectedViews, 'view', tones.composition);
     push(selectedStyles, setSelectedStyles, 'style', tones.composition);
     push(selectedColorPalettes, setSelectedColorPalettes, 'palette', tones.composition);
@@ -363,8 +402,34 @@ const App = () => {
     selectedHighlight,
     selectedLips,
     selectedNails,
+    storyboardLayout,
+    storyboardStyle,
+    selectedCameraMovements,
     promptFormat,
     language,
+  ]);
+
+  const storyboardCount = useMemo(() => {
+    const hasText = (value: string) => value.trim().length > 0;
+    return (
+      (storyboardLayout !== StoryboardLayout.SINGLE ? 1 : 0) +
+      (storyboardStyle !== StoryboardStyle.AUTO ? 1 : 0) +
+      selectedCameraMovements.length +
+      (hasText(storyboardPanels) ? 1 : 0) +
+      (hasText(panelAspect) ? 1 : 0) +
+      (hasText(beatSheet) ? 1 : 0) +
+      (hasText(shotNotes) ? 1 : 0) +
+      (hasText(directorNotes) ? 1 : 0)
+    );
+  }, [
+    storyboardLayout,
+    storyboardStyle,
+    selectedCameraMovements.length,
+    storyboardPanels,
+    panelAspect,
+    beatSheet,
+    shotNotes,
+    directorNotes,
   ]);
 
   useEffect(() => {
@@ -490,6 +555,14 @@ const App = () => {
     try {
       const modifiers = [
         customModifiers ? `Custom Details: ${customModifiers}` : '',
+        storyboardLayout !== StoryboardLayout.SINGLE ? `Storyboard Layout: ${storyboardLayout}` : '',
+        storyboardPanels ? `Storyboard Panels: ${storyboardPanels}` : '',
+        storyboardStyle !== StoryboardStyle.AUTO ? `Storyboard Style: ${storyboardStyle}` : '',
+        selectedCameraMovements.length ? `Camera Movement: ${selectedCameraMovements.join(', ')}` : '',
+        panelAspect ? `Panel Aspect: ${panelAspect}` : '',
+        beatSheet.trim() ? `Beat Sheet/Scene List: ${beatSheet.trim()}` : '',
+        shotNotes.trim() ? `Shot Notes/Dialogue: ${shotNotes.trim()}` : '',
+        directorNotes.trim() ? `Director Notes: ${directorNotes.trim()}` : '',
         // Composition & Style modifiers
         selectedViews.length ? `Perspective: ${selectedViews.join(', ')}` : '',
         selectedStyles.length ? `Art Style: ${selectedStyles.join(', ')}` : '',
@@ -606,6 +679,14 @@ const App = () => {
         setSelectedFilmTypes([]);
         setSelectedTimes([]);
         setSelectedWeather([]);
+        setStoryboardLayout(StoryboardLayout.SINGLE);
+        setStoryboardPanels('');
+        setStoryboardStyle(StoryboardStyle.AUTO);
+        setSelectedCameraMovements([]);
+        setPanelAspect('');
+        setBeatSheet('');
+        setShotNotes('');
+        setDirectorNotes('');
         setPromptFormat(PromptFormat.NATURAL);
         setGeneratedImages([]);
         setSelectedReferenceIds([]);
@@ -1162,6 +1243,68 @@ const App = () => {
                     />
                   </Collapsible>
                 </div>
+
+                <Collapsible
+                  title={t('directorStoryboard')}
+                  isOpen={openSections.includes('director')}
+                  onToggle={() => toggleSection('director')}
+                  count={storyboardCount}
+                >
+                  <div className="space-y-4">
+                    <Select
+                      label={t('storyboardLayout')}
+                      options={enumOptions(StoryboardLayout)}
+                      value={storyboardLayout}
+                      onChange={(e) => setStoryboardLayout(e.target.value as StoryboardLayout)}
+                    />
+                    <Input
+                      label={t('storyboardPanels')}
+                      type="number"
+                      min="1"
+                      placeholder={t('storyboardPanelsPlaceholder')}
+                      value={storyboardPanels}
+                      onChange={(e) => setStoryboardPanels(e.target.value)}
+                    />
+                    <Select
+                      label={t('storyboardStyle')}
+                      options={enumOptions(StoryboardStyle)}
+                      value={storyboardStyle}
+                      onChange={(e) => setStoryboardStyle(e.target.value as StoryboardStyle)}
+                    />
+                    <MultiSelect 
+                      {...multiSelectProps}
+                      label={t('cameraMovement')}
+                      options={enumOptions(CameraMovement)}
+                      value={selectedCameraMovements}
+                      onChange={setSelectedCameraMovements}
+                      placeholder={selectPlaceholder(t('cameraMovement'))}
+                    />
+                    <Input
+                      label={t('panelAspect')}
+                      placeholder={t('panelAspectPlaceholder')}
+                      value={panelAspect}
+                      onChange={(e) => setPanelAspect(e.target.value)}
+                    />
+                    <TextArea
+                      label={t('beatSheet')}
+                      placeholder={t('beatSheetPlaceholder')}
+                      value={beatSheet}
+                      onChange={(e) => setBeatSheet(e.target.value)}
+                    />
+                    <TextArea
+                      label={t('shotNotes')}
+                      placeholder={t('shotNotesPlaceholder')}
+                      value={shotNotes}
+                      onChange={(e) => setShotNotes(e.target.value)}
+                    />
+                    <TextArea
+                      label={t('directorNotes')}
+                      placeholder={t('directorNotesPlaceholder')}
+                      value={directorNotes}
+                      onChange={(e) => setDirectorNotes(e.target.value)}
+                    />
+                  </div>
+                </Collapsible>
 
                 <div className="pt-4 space-y-3">
                   {selectedBadges.length > 0 && (
