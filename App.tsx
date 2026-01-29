@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   UploadedImage, AnalysisResponse, AspectRatio, GeneratedImage, 
   ViewPoint, Lighting, ArtStyle, FocalLength, FilmType, 
@@ -188,15 +188,62 @@ const App = () => {
   // Generation Config - Persisted
   const [aspectRatio, setAspectRatio] = usePersistentState<AspectRatio>('gp_aspectRatio', AspectRatio.SQUARE);
   const [resolution, setResolution] = usePersistentState<ImageResolution>('gp_resolution', ImageResolution.RES_1K);
-  const [includeReference, setIncludeReference] = usePersistentState<boolean>('gp_includeReference', false);
   const [selectedModel, setSelectedModel] = usePersistentState<GenModel>('gp_selectedModel', GenModel.NANO_BANANA);
   const [imageCount, setImageCount] = usePersistentState<number>('gp_imageCount', 1);
   
   // Output - Persisted
   const [generatedImages, setGeneratedImages] = usePersistentState<GeneratedImage[]>('gp_generatedImages', []);
+  const [selectedReferenceIds, setSelectedReferenceIds] = usePersistentState<string[]>('gp_selectedReferenceIds', []);
 
   // File Input Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const parseDataUrl = (url: string): { data: string; mimeType: string } | null => {
+    const match = url.match(/^data:(.+);base64,(.*)$/);
+    if (!match) return null;
+    return { mimeType: match[1], data: match[2] };
+  };
+
+  const referenceCandidates = useMemo(() => {
+    const uploads = images.map((img) => ({
+      id: `upload-${img.id}`,
+      source: 'upload' as const,
+      data: img.data,
+      mimeType: img.mimeType,
+      previewUrl: `data:${img.mimeType};base64,${img.data}`,
+    }));
+
+    const generated = generatedImages.flatMap((img) => {
+      const parsed = parseDataUrl(img.url);
+      if (!parsed) return [];
+      return [{
+        id: `generated-${img.id}`,
+        source: 'generated' as const,
+        data: parsed.data,
+        mimeType: parsed.mimeType,
+        previewUrl: img.url,
+      }];
+    });
+
+    return [...uploads, ...generated];
+  }, [images, generatedImages]);
+
+  const selectedReferenceImages = useMemo(
+    () =>
+      referenceCandidates
+        .filter((item) => selectedReferenceIds.includes(item.id))
+        .map((item) => ({ id: item.id, data: item.data, mimeType: item.mimeType })),
+    [referenceCandidates, selectedReferenceIds]
+  );
+
+  useEffect(() => {
+    if (selectedReferenceIds.length === 0) return;
+    const available = new Set(referenceCandidates.map((item) => item.id));
+    setSelectedReferenceIds((prev) => {
+      const next = prev.filter((id) => available.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [referenceCandidates, selectedReferenceIds.length, setSelectedReferenceIds]);
 
   // Handle File Upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -383,12 +430,13 @@ const App = () => {
     
     setIsGenerating(true);
     try {
+      const referenceImages = selectedReferenceImages.length > 0 ? selectedReferenceImages : null;
       const urls = await generateImages(
         currentPrompt, 
         aspectRatio, 
         selectedModel,
         resolution,
-        includeReference ? images : null,
+        referenceImages,
         imageCount,
         apiKey
       );
@@ -429,6 +477,7 @@ const App = () => {
         setSelectedWeather([]);
         setPromptFormat(PromptFormat.NATURAL);
         setGeneratedImages([]);
+        setSelectedReferenceIds([]);
         localStorage.clear();
       }
   };
@@ -1000,7 +1049,7 @@ const App = () => {
                     onChange={(e) => setSelectedModel(e.target.value as GenModel)}
                   />
 
-                 <div className="grid grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 gap-4">
                    <Select 
                       label={t('aspectRatio')}
                       options={enumOptions(AspectRatio)}
@@ -1026,24 +1075,66 @@ const App = () => {
                     )}
                  </div>
 
-                 <div className="grid grid-cols-2 gap-4">
-                    <Select 
+                <div className="grid grid-cols-2 gap-4">
+                   <Select 
                       label={t('imageCount')}
                       options={[1, 2, 3, 4].map(n => ({ label: n.toString(), value: n.toString() }))}
                       value={imageCount}
                       onChange={(e) => setImageCount(parseInt(e.target.value))}
                     />
-                    
-                    <div className="flex flex-col gap-1 w-full">
-                      <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('source')}</label>
-                      <button 
-                        onClick={() => setIncludeReference(!includeReference)}
-                        className={`h-[46px] border-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${includeReference ? 'border-accent bg-accent/5 text-accent' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
-                      >
-                        <div className={`w-3 h-3 border ${includeReference ? 'bg-accent border-accent' : 'border-gray-400'}`}></div>
-                        {t('includeSources')}
-                      </button>
-                    </div>
+                 </div>
+
+                 <div className="flex flex-col gap-2">
+                   <div className="flex items-center justify-between">
+                     <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{t('source')}</label>
+                     <span className="text-[10px] font-mono uppercase text-gray-400">
+                       {t('selectedCount', { count: selectedReferenceIds.length })}
+                     </span>
+                   </div>
+                   <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                     {referenceCandidates.length === 0 ? (
+                       <div className="h-20 w-full min-w-[180px] border-2 border-dashed border-gray-200 text-xs text-gray-400 flex items-center justify-center">
+                         {t('includeSources')}
+                       </div>
+                     ) : (
+                       referenceCandidates.map((item) => {
+                         const isSelected = selectedReferenceIds.includes(item.id);
+                         return (
+                           <button
+                             key={item.id}
+                             type="button"
+                             onClick={() =>
+                               setSelectedReferenceIds((prev) =>
+                                 prev.includes(item.id)
+                                   ? prev.filter((id) => id !== item.id)
+                                   : [...prev, item.id]
+                               )
+                             }
+                             aria-pressed={isSelected}
+                             className={`relative h-20 w-20 flex-shrink-0 border-2 overflow-hidden transition-all ${
+                               isSelected
+                                 ? 'border-accent ring-2 ring-accent/30'
+                                 : 'border-gray-200 hover:border-gray-300'
+                             }`}
+                           >
+                             <img
+                               src={item.previewUrl}
+                               alt={item.source === 'upload' ? 'Uploaded reference' : 'Generated reference'}
+                               className="h-full w-full object-cover"
+                             />
+                             <div
+                               className={`absolute top-1 left-1 h-3 w-3 rounded-full border ${
+                                 isSelected ? 'bg-accent border-accent' : 'bg-white/80 border-gray-300'
+                               }`}
+                             />
+                             <div className="absolute bottom-1 right-1 text-[9px] font-mono uppercase text-white bg-black/60 px-1">
+                               {item.source === 'upload' ? 'IN' : 'GEN'}
+                             </div>
+                           </button>
+                         );
+                       })
+                     )}
+                   </div>
                  </div>
                </div>
 
